@@ -3,60 +3,67 @@ package main
 import (
     "fmt"
     "log"
-    "net/http"
     "net/url"
+    "net/http"
+    "net/http/httputil"
     "strings"
 )
 
 func serviceNotFound(w http.ResponseWriter) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusNotFound)
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusNotFound)
 
-	fmt.Fprintf(w, "{ \"error\": \"service not found\" }")
+    fmt.Fprintf(w, "{ \"error\": \"service not found\" }")
 }
 
 func redirectRequest(w http.ResponseWriter, name string, path string, r *http.Request) {
-    var url = fmt.Sprintf("http://%s/%s?%s", name, path, r.URL.RawQuery)
+    var newUrl = fmt.Sprintf("http://%s/%s?%s", name, path, r.URL.RawQuery)
 
-    log.Print(fmt.Sprintf("redirecting to: %s\n", url))
+    remote, err := url.Parse(newUrl)
+    if err != nil {
+        log.Print(err)
+        serviceNotFound(w)
+        return
+    }
 
-    http.Redirect(w, r, url, http.StatusFound)
+    proxy := httputil.NewSingleHostReverseProxy(remote)
+
+    log.Print(fmt.Sprintf("redirecting to: %s\n", newUrl))
+
+    w.Header().Set("X-Ben", "Rad")
+    proxy.ServeHTTP(w, r)
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	u, err := url.Parse(r.URL.Path[1:])
-	if err != nil {
-        log.Fatal(err)
-    }
+    urlSegments := strings.SplitAfterN(r.URL.Path[1:], "/", 2)
 
-    urlSegments := strings.SplitAfterN(u.Path, "/", 2)
-
-	var serviceName string = urlSegments[0]
+    var serviceName string = urlSegments[0]
 
     if len(urlSegments) > 1 {
-	    servicePath := urlSegments[0]
-	    serviceName = servicePath[:len(servicePath)-1]
+        servicePath := urlSegments[0]
+        serviceName = servicePath[:len(servicePath)-1]
     }
 
     if len(serviceName) < 1 {
-    	serviceNotFound(w)
-    } else {
-    	var path string = ""
-
-    	if len(urlSegments) > 1 {
-    		path = urlSegments[1]
-    	}
-
-    	redirectRequest(w, serviceName, path, r)
+        serviceNotFound(w)
+        return
     }
+
+    var path string = ""
+
+    if len(urlSegments) > 1 {
+        path = urlSegments[1]
+    }
+
+    redirectRequest(w, serviceName, path, r)
 }
 
 func main() {
-	var port int = 8080
+    var port int = 8080
 
     http.HandleFunc("/", handler)
 
-	fmt.Printf("listening on port %d\n", port)
+    fmt.Printf("listening on port %d\n", port)
 
     log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
 }
