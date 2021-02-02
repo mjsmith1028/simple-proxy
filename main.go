@@ -39,11 +39,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
     var serviceName string = urlSegments[0]
 
-    if len(urlSegments) > 1 {
-        servicePath := urlSegments[0]
-        serviceName = servicePath[:len(servicePath)-1]
-    }
-
     if len(serviceName) < 1 {
         serviceNotFound(w)
         return
@@ -52,6 +47,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
     var path string = ""
 
     if len(urlSegments) > 1 {
+        servicePath := urlSegments[0]
+        serviceName = servicePath[:len(servicePath)-1]
         path = urlSegments[1]
     }
 
