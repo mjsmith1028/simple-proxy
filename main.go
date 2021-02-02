@@ -16,7 +16,9 @@ func serviceNotFound(w http.ResponseWriter) {
 }
 
 func redirectRequest(w http.ResponseWriter, name string, path string, r *http.Request) {
-    var url = fmt.Sprintf("http://%s/%s", name, path)
+    var url = fmt.Sprintf("http://%s/%s?%s", name, path, r.URL.RawQuery)
+
+    log.Print(fmt.Sprintf("redirecting to: %s\n", url))
 
     http.Redirect(w, r, url, http.StatusFound)
 }
