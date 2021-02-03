@@ -26,3 +26,32 @@ add the port like this:
 ```shell
 curl http://localhost/echo:<port>
 ```
+
+## K8s
+
+### Basic deployment
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: default
+  name: proxy
+spec:
+  selector:
+    matchLabels:
+      app: proxy
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: proxy
+    spec:
+      containers:
+      - image: dlilue/proxy-go
+        imagePullPolicy: Always
+        name: proxy
+        ports:
+        - containerPort: 8080
+
+```
