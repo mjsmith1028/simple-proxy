@@ -26,11 +26,23 @@ func redirectRequest(w http.ResponseWriter, name string, path string, r *http.Re
         return
     }
 
-    proxy := httputil.NewSingleHostReverseProxy(remote)
+    director := func(req *http.Request) {
+        req.Host = name
+        req.URL.Scheme = remote.Scheme
+        req.URL.Host = name
+        req.URL.Path = fmt.Sprintf("/%s", path)
+
+        if _, ok := req.Header["User-Agent"]; !ok {
+            req.Header.Set("User-Agent", "")
+        }
+    }
+
+    proxy := &httputil.ReverseProxy{ Director: director }
 
     log.Print(fmt.Sprintf("redirecting to: %s\n", newUrl))
 
     w.Header().Set("X-Ben", "Rad")
+
     proxy.ServeHTTP(w, r)
 }
 
