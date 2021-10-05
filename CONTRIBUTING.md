@@ -1,9 +1,6 @@
-# simple-proxy
+# Simple-proxy
 
-TODO: add info
-
-
-# Publish Chart
+## Publish Chart
 - `helm package charts/simple-proxy -d docs`
 - `helm repo index docs`
 
