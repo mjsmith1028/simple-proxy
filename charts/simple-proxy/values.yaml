@@ -1,0 +1,41 @@
+# Default values for simple-proxy.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+namespace: default
+
+replicaCount: 1
+
+image:
+  repository: mjsmith1028/simple-proxy
+  pullPolicy: Always
+  tag: "latest"
+
+imagePullSecrets:
+nameOverride: ""
+fullnameOverride: ""
+
+podAnnotations: {
+  sidecar.istio.io/inject: "false"
+}
+
+podLabels: {
+  app: "simple-proxy",
+  aadpodidbinding: "test-user"
+}
+
+resources: {}
+
+nodeSelector: {
+  kubernetes.io/os: linux
+}
+
+tolerations: []
+
+affinity: {}
+
+app:
+  host: "169.254.169.254"
+  port: 8080
+  protocol: "http://"
+

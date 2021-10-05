@@ -1,78 +1,68 @@
 package main
 
 import (
-    "fmt"
-    "log"
-    "net/url"
-    "net/http"
-    "net/http/httputil"
-    "strings"
+	"fmt"
+	"log"
+	"net/http"
+	"net/http/httputil"
+	"net/url"
+	"os"
+	"strconv"
 )
 
 func serviceNotFound(w http.ResponseWriter) {
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusNotFound)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusNotFound)
 
-    fmt.Fprintf(w, "{ \"error\": \"service not found\" }")
+	_, err := fmt.Fprintf(w, "{ \"error\": \"service not found\" }")
+	if err != nil {
+		return
+	}
 }
 
-func redirectRequest(w http.ResponseWriter, name string, path string, r *http.Request) {
-    var newUrl = fmt.Sprintf("http://%s/%s?%s", name, path, r.URL.RawQuery)
+func redirectRequest(protocol string, w http.ResponseWriter, host string, path string, r *http.Request) {
+	var newUrl = fmt.Sprintf("%s%s%s?%s", protocol, host, path, r.URL.RawQuery)
 
-    remote, err := url.Parse(newUrl)
-    if err != nil {
-        log.Print(err)
-        serviceNotFound(w)
-        return
-    }
+	remote, err := url.Parse(newUrl)
+	if err != nil {
+		log.Print(err)
+		serviceNotFound(w)
+		return
+	}
 
-    director := func(req *http.Request) {
-        req.Host = name
-        req.URL.Scheme = remote.Scheme
-        req.URL.Host = name
-        req.URL.Path = fmt.Sprintf("/%s", path)
+	director := func(req *http.Request) {
+		req.Host = host
+		req.URL.Scheme = remote.Scheme
+		req.URL.Host = host
+		req.URL.Path = path
 
-        if _, ok := req.Header["User-Agent"]; !ok {
-            req.Header.Set("User-Agent", "")
-        }
-    }
+		if _, ok := req.Header["User-Agent"]; !ok {
+			req.Header.Set("User-Agent", "simple-proxy")
+		}
+	}
 
-    proxy := &httputil.ReverseProxy{ Director: director }
+	proxy := &httputil.ReverseProxy{Director: director}
 
-    log.Print(fmt.Sprintf("redirecting to: %s\n", newUrl))
+	log.Print(fmt.Sprintf("redirecting to: %s\n", newUrl))
 
-    w.Header().Set("X-Ben", "Rad")
-
-    proxy.ServeHTTP(w, r)
+	proxy.ServeHTTP(w, r)
 }
 
 func handler(w http.ResponseWriter, r *http.Request) {
-    urlSegments := strings.SplitAfterN(r.URL.Path[1:], "/", 2)
-
-    var serviceName string = urlSegments[0]
-
-    if len(serviceName) < 1 {
-        serviceNotFound(w)
-        return
-    }
-
-    var path string = ""
-
-    if len(urlSegments) > 1 {
-        servicePath := urlSegments[0]
-        serviceName = servicePath[:len(servicePath)-1]
-        path = urlSegments[1]
-    }
-
-    redirectRequest(w, serviceName, path, r)
+	host := os.Getenv("APP_HOST")
+	protocol := os.Getenv("APP_PROTOCOL")
+	path := r.URL.Path
+	redirectRequest(protocol, w, host, path, r)
 }
 
 func main() {
-    var port int = 8080
+	port, err := strconv.Atoi(os.Getenv("APP_PORT"))
+	if err != nil {
+		log.Fatal("Error converting port to int")
+	}
 
-    http.HandleFunc("/", handler)
+	http.HandleFunc("/", handler)
 
-    fmt.Printf("listening on port %d\n", port)
-
-    log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
+	fmt.Printf("listening on port %d\n", port)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
 }
